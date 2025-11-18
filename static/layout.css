@@ -1,0 +1,7 @@
+#version {
+	color: rgb(31, 80, 141);
+	position: fixed;
+	bottom: 1em;
+	right: 1em;
+	font-size: small;
+}

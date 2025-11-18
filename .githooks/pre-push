@@ -1,0 +1,208 @@
+#!/bin/bash
+
+APP="Dashboard-Subscription"
+
+function main() {
+    if [ "$1" = "--debug" ]; then
+        DEBUG=true
+        log_verbose "Debug mode"
+    fi
+
+    if [ "$1" = "--detailed" ] || [ "$2" = "--detailed" ]; then
+        DETAILED=true
+        DEBUG=true
+        log_color "Detailed mode" "yellow"
+    fi
+
+    check_prerequisites
+    check 'prerequisites' $?
+    log "[✔] Verify prerequisites"
+
+    install_dependencies $DETAILED
+    check 'dependencies' $?
+    log "[✔] Restore Nuget"
+
+    execute $DETAILED
+    check 'execute' $?
+    log "[✔] Executing"
+
+    unittest
+    check 'unittest' $?
+    log "[✔] Unit Tests"
+
+    linter_fix
+    check 'linter' $?
+    log "[✔] Ruff check --fix"
+
+    linter
+    check 'linter' $?
+    log "[✔] Ruff check"
+    
+    # TODO a faire
+    #coverage
+    log "[✔] Coverage"
+
+    # TODO a faire
+    #docker_build
+    #check 'docker_build' $?
+    log "[✔] Docker images built"
+
+    check_sca
+    check 'check_sca' $?
+    log "[✔] Check sca"
+
+    sca
+    log "[✔] Sca"
+
+    log_color "Every control are OK" "green"
+}
+
+###
+# Check return code of command (restore, build, test ...)
+# $1: action to be verified
+# $2: return code of the action (0 = executed, other=action on error)
+###
+function check() {
+    action=$1
+    result_code=$2
+    log_verbose "action ${action} -> result_code: ${result_code}"
+
+    case $action in
+    'prerequisites')
+        [ $result_code != 0 ] && log_color "Error: dotnet command is not available.\ngit push canceled" "red" && exit 1
+        ;;
+    'dependencies')
+        [ $result_code != 0 ] && log_color "Error: Impossible to install dependencies.\ngit push canceled" "red" && exit 1
+        ;;
+    'execute')
+        [ $result_code != 0 ] && log_color "Error: Impossible to launch application.\ngit push canceled" "red" && exit 1
+        ;;
+    'unittest')
+        [ $result_code != 0 ] && log_color "Unit tests are not all passed.\ngit push canceled" "red" && exit 1
+        ;;
+    'linter')
+        [ $result_code != 0 ] && log_color "Linter check is not successful.\nCancel git push." "red" && exit 1
+        ;;
+    'check_sca')
+        [ $result_code != 0 ] && log_color "No package to launch analysis" "red" && log Execute: $(log_color  "npm i -g npm-audit-html@beta" "yellow") && log_color "Cancel git push" "red" && exit 1
+        ;;
+    'docker_build')
+        [ $result_code != 0 ] && log_color "Docker images building failed" "red" && log_color "Cancel git push" "red" && exit 1
+        ;;
+    esac
+}
+
+function check_prerequisites() {
+    which python >/dev/null
+    which poetry >/dev/null
+}
+
+function install_dependencies() {
+    venv_path=".venv"
+    rm -rf "${venv_path}"
+    python -m venv "${venv_path}" >/dev/null
+    source "${venv_path}"/Scripts/activate
+    rm poetry.lock
+    poetry env use "${venv_path}"/Scripts/python.exe >/dev/null
+    [ "${DETAILED}" == "true" ] && poetry install --with dev || poetry install --with dev >/dev/null
+    return $?
+}
+
+###
+# Launching flask and waiting process creation
+###
+function execute() {
+    flask run & FLASK_PID=$!
+    sleep 2
+
+    if ps -p $FLASK_PID > /dev/null; then
+        kill $FLASK_PID
+        return 0
+    else
+        return 1
+    fi
+}
+
+function unittest() {
+    [ "${DETAILED}" == "true" ] && pytest || pytest >/dev/null
+    return $?
+}
+
+# TODO A FAIRE
+function coverage() {
+    npm run test:coverage
+    start ./coverage/lcov-report/index.html
+}
+
+function linter_fix() {
+    ruff check --fix > /dev/null 2>/dev/null
+    return $?
+}
+
+function linter() {
+    ruff check > /dev/null 2>/dev/null
+    return $?
+}
+
+function check_sca(){
+    which safety > /dev/null 2>/dev/null
+    return $?
+}
+
+function sca(){
+    [ "${DETAILED}" == "true" ] && safety check || safety check > /dev/null 2>/dev/null
+    return $?
+}
+
+# TODO A FAIRE
+function docker_build() {
+    npm run docker:build
+    return $?
+}
+
+################################################################### Utils functions ###################################################################
+
+function get_datetime {
+    log $(date '+%Y-%m-%d %H:%M:%S')
+}
+
+function log {
+    echo -e $@
+}
+
+function log_color {
+    message=$1
+    color=$2
+    log ${COLORS[$color]}$message${COLORS[nc]}
+}
+
+typeset -A COLORS=(
+    [default]='\033[0;39m'
+    [black]='\033[0;30m'
+    [red]='\033[0;31m'
+    [green]='\033[0;32m'
+    [yellow]='\033[0;33m'
+    [blue]='\033[0;34m'
+    [magenta]='\033[0;35m'
+    [cyan]='\033[0;36m'
+    [light_gray]='\033[0;37m'
+    [light_grey]='\033[0;37m'
+    [dark_gray]='\033[0;90m'
+    [dark_grey]='\033[0;90m'
+    [light_red]='\033[0;91m'
+    [light_green]='\033[0;92m'
+    [light_yellow]='\033[0;93m'
+    [light_blue]='\033[0;94m'
+    [light_magenta]='\033[0;95m'
+    [light_cyan]='\033[0;96m'
+    [nc]='\033[0m' # No Color
+)
+
+function log_verbose {
+    message=$@
+    date=$(get_datetime)
+    if [ "${DEBUG}" = "true" ]; then log_color "[$date] $message" "light_blue"; fi
+    return
+}
+
+main "$@"

@@ -233,6 +233,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+venv.hook/
 
 # Spyder project settings
 .spyderproject
@@ -290,3 +291,4 @@ cython_debug/
 
 # App ignore
 TODO
+.ruff_cache

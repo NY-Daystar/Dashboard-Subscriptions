@@ -1,0 +1,43 @@
+[project]
+name = "dashboard-subscriptions"
+version = "1.0.0"
+description = "project to handle your subscriptions like streaming platform or taxes"
+authors = [
+    {name = "Lucas Noga",email = "luc4snoga@gmail.com"}
+]
+license = {text = "GPL-3.0 license"}
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "flask (>=3.1.2,<4.0.0)",
+    "sqlalchemy (>=2.0.44,<3.0.0)"
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = false
+
+[dependency-groups]
+dev = [
+    "ruff (>=0.14.5,<0.15.0)",
+    "safety (>=3.7.0,<4.0.0)",
+    "pytest (>=9.0.1,<10.0.0)"
+]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+target-version = "py311"
+
+# Sélection des règles
+lint.select = ["ALL"]
+lint.ignore = ["COM812", "D100", "D101", "D102", "D103", "D104", "D105", "D203", "D205", "D213", "D400", "D401", "D415", "ERA001", "FIX002", "TD002", "TD003"]
+lint.exclude = [
+    ".venv",
+    "__pycache__",
+    "migrations",
+    "data.db",
+]
