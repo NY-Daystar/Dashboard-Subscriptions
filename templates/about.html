@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+{% extends "layout.html" %} {% block content %}
+
+<script src="static/index.js" defer></script>
+
+<h2 class="mb-3">About</h2>
+
+<p class="lead">
+	{{Application}} is an open source project to save your subscription
+</p>
+
+<p class="lead">
+	More information in the
+	<a href="{{link}}" target="_blank">github repository</a>
+</p>
+
+{% endblock %}
